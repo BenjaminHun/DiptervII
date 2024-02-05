@@ -110,9 +110,9 @@ def main():
     args.div_flow = 20
     args.sparse = False
     if platform.system == 'Windows':
-        args.data = 'C:\Users\pappb\Downloads\FlyingChairs_release'
+        args.data = 'C://Users//pappb//Downloads//FlyingChairs_release'
     else:
-        args.data = '/data2/benjamin/flying_chairs'
+        args.data = '/data2/benjamin/FlyingChairs_release/data'
     args.split_file = None
     args.split_value = 0.8
     args.workers = 8
@@ -124,6 +124,8 @@ def main():
     args.evaluate = False
     args.milestones = [100, 150, 200]
     args.start_epoch = 0
+    args.multiscale_weights = [0.005, 0.01, 0.02, 0.08, 0.32]
+    args.print_freq = 10
     save_path = '{},{},{}epochs{},b{},lr{}'.format(
         args.arch,
         args.solver,
