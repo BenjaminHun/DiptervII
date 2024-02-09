@@ -46,7 +46,7 @@ class FlowNetC(nn.Module):
         self.predict_flow5 = predict_flow(1026)
         self.predict_flow4 = predict_flow(770)
         self.predict_flow3 = predict_flow(386)
-        self.predict_flow2 = predict_flow(322)
+        self.predict_flow2 = predict_flow(66)
 
         self.upsampled_flow6_to_5 = nn.ConvTranspose2d(
             2, 2, 4, 2, 1, bias=False)
@@ -114,7 +114,7 @@ class FlowNetC(nn.Module):
         flow3_up = crop_like(self.upsampled_flow3_to_2(flow3), out_conv3a)
         out_deconv2 = crop_like(self.deconv2(concat3), out_conv3a)
 
-        concat2 = torch.cat((out_conv3a, out_deconv2, flow3_up), 1)
+        concat2 = torch.cat((out_deconv2, flow3_up), 1)
         flow2 = self.predict_flow2(concat2)
 
         if self.training:
