@@ -14,20 +14,11 @@ class FlowNetC(nn.Module):
 
     def __init__(self, batchNorm=True):
         super(FlowNetC, self).__init__()
-        self.layers=[]
-        self.vgg16 = torchvision.models.alexnet(
-            pretrained=True).features
 
-        for param in self.vgg16.parameters():
-            param.requires_grad = False
-        
-        for m in self.vgg16.modules():
-            self.layers.append(m)
-        self.customModel= nn.Sequential(*self.layers[1:15])
         self.batchNorm = batchNorm
-        # self.conv1 = conv(self.batchNorm,   3,   64, kernel_size=7, stride=2)
-        # self.conv2 = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
-        # self.conv3 = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
+        self.conv1 = conv(self.batchNorm,   3,   64, kernel_size=7, stride=2)
+        self.conv2 = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
+        self.conv3 = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
         self.conv_redir = conv(self.batchNorm, 256,   32,
                                kernel_size=1, stride=1)
 
@@ -48,7 +39,7 @@ class FlowNetC(nn.Module):
         self.predict_flow5 = predict_flow(1026)
         self.predict_flow4 = predict_flow(770)
         self.predict_flow3 = predict_flow(386)
-        self.predict_flow2 = predict_flow(322)
+        self.predict_flow2 = predict_flow(194)
 
         self.upsampled_flow6_to_5 = nn.ConvTranspose2d(
             2, 2, 4, 2, 1, bias=False)
@@ -78,15 +69,15 @@ class FlowNetC(nn.Module):
         x1 = x[:, :3]
         x2 = x[:, 3:]
 
-        # out_conv1a = self.conv1(x1)
-        # out_conv2a = self.conv2(out_conv1a)
-        # out_conv3a = self.conv3(out_conv2a)
-        out_conv3a = self.customModel(x1)
+        out_conv1a = self.conv1(x1)
+        out_conv2a = self.conv2(out_conv1a)
+        out_conv3a = self.conv3(out_conv2a)
+        #out_conv3a = self.customModel(x1)
 
-        # out_conv1b = self.conv1(x2)
-        # out_conv2b = self.conv2(out_conv1b)
-        # out_conv3b = self.conv3(out_conv2b)
-        out_conv3b = self.customModel(x2)
+        out_conv1b = self.conv1(x2)
+        out_conv2b = self.conv2(out_conv1b)
+        out_conv3b = self.conv3(out_conv2b)
+        #out_conv3b = self.customModel(x2)
         out_conv_redir = self.conv_redir(out_conv3a)
         out_correlation = correlate(out_conv3a, out_conv3b)
 
