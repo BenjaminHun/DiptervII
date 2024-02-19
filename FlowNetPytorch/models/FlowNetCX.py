@@ -1,44 +1,26 @@
 import torch
 import torch.nn as nn
 from torch.nn.init import kaiming_normal_, constant_
-
-from models import FlowNetCX
 from .util import conv, predict_flow, deconv, crop_like, correlate
-from models import FlowNetC
 import models
 
 __all__ = [
-    'flownetc', 'flownetc_bn'
+    'flownetcx', 'flownetcx_bn'
 ]
 
 
-class FlowNetC(nn.Module):
+class FlowNetCX(nn.Module):
     expansion = 1
 
     def __init__(self, batchNorm=True):
-        super(FlowNetC, self).__init__()
+        super(FlowNetCX, self).__init__()
 
-        model = FlowNetCX.FlowNetCX(batchNorm=True)
-        device = "cpu"
-        layers = []
 
-        network_data = torch.load("model_best.pth.tar")
-        print("=> using pre-trained model '{}'".format(network_data['arch']))
-        
-        model = models.__dict__['flownetcx'](network_data).to(device)
-        model.eval()
-        layers = list(model.modules())
-        conv1=layers[1]
-        conv2=layers[4]
-        conv3=layers[7]
-        conv1.requires_grad=False
-        conv2.requires_grad=False
-        conv3.requires_grad=False
 
         self.batchNorm = batchNorm
-        self.conv1 = conv1
-        self.conv2 = conv2
-        self.conv3 = conv3
+        self.conv1 = conv(self.batchNorm,   3,   64, kernel_size=7, stride=2)
+        self.conv2 = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
+        self.conv3 = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
         self.conv_redir = conv(self.batchNorm, 256,   32,
                                kernel_size=1, stride=1)
 
@@ -135,27 +117,27 @@ class FlowNetC(nn.Module):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
 
-def flownetc(data=None):
+def flownetcx(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
         data : pretrained weights of the network. will create a new one if not set
     """
-    model = FlowNetC(batchNorm=False)
+    model = FlowNetCX(batchNorm=False)
     if data is not None:
         model.load_state_dict(data['state_dict'])
     return model
 
 
-def flownetc_bn(data=None):
+def flownetcx_bn(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
         data : pretrained weights of the network. will create a new one if not set
     """
-    model = FlowNetC(batchNorm=True)
+    model = FlowNetCX(batchNorm=True)
     if data is not None:
         model.load_state_dict(data['state_dict'])
     return model
