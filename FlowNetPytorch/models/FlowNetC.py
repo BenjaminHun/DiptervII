@@ -20,7 +20,10 @@ class FlowNetC(nn.Module):
         model.fc = nn.Identity()
         model.maxpool = nn.Identity()
         model.flatten = nn.Identity()
-        self.backboneModel = model
+        layers = []
+        for m in model.modules():
+            layers.append(m)
+        self.backboneModel = nn.Sequential(layers[1], layers[5])
 
         for param in self.backboneModel.parameters():
             param.requires_grad = False
@@ -29,7 +32,7 @@ class FlowNetC(nn.Module):
         self.conv1 = conv(self.batchNorm,   3,   64, kernel_size=7, stride=2)
         self.conv2 = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
         self.conv3 = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
-        self.conv_redir = conv(self.batchNorm, 768,   32,
+        self.conv_redir = conv(self.batchNorm, 96,   32,
                                kernel_size=1, stride=1)
 
         self.conv3_1 = conv(self.batchNorm, 473,  256)
@@ -74,9 +77,10 @@ class FlowNetC(nn.Module):
         x2 = x[:, 3:]
 
         with torch.no_grad():
-            out_conv3a = self.backboneModel(x1).permute(0,3,1,2).contiguous()
-            out_conv3b = self.backboneModel(x2).permute(0,3,1,2).contiguous()
-
+            out_conv3a = self.backboneModel(
+                x1).permute(0, 3, 1, 2).contiguous()
+            out_conv3b = self.backboneModel(
+                x2).permute(0, 3, 1, 2).contiguous()
 
         out_conv_redir = self.conv_redir(out_conv3a)
         out_correlation = correlate(out_conv3a, out_conv3b)
