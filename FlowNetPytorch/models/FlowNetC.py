@@ -14,16 +14,15 @@ class FlowNetC(nn.Module):
     def __init__(self, batchNorm=True):
         super(FlowNetC, self).__init__()
 
-        model = torchvision.models.swin_t(
-            weights=torchvision.models.Swin_T_Weights).features
+        model = torchvision.models.resnet50(
+            weights=torchvision.models.ResNet50_Weights)
         model.avgpool = nn.Identity()
         model.fc = nn.Identity()
         model.maxpool = nn.Identity()
-        model.flatten = nn.Identity()
-        layers = []
-        for m in model.modules():
-            layers.append(m)
-        self.backboneModel = nn.Sequential(layers[1], layers[5])
+        self.backboneModel = nn.Sequential(
+            model.conv1, model.layer1, model.layer2, model.layer3)
+
+
 
         for param in self.backboneModel.parameters():
             param.requires_grad = False
@@ -32,7 +31,7 @@ class FlowNetC(nn.Module):
         self.conv1 = conv(self.batchNorm,   3,   64, kernel_size=7, stride=2)
         self.conv2 = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
         self.conv3 = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
-        self.conv_redir = conv(self.batchNorm, 96,   32,
+        self.conv_redir = conv(self.batchNorm, 1024,   32,
                                kernel_size=1, stride=1)
 
         self.conv3_1 = conv(self.batchNorm, 473,  256)
@@ -75,13 +74,11 @@ class FlowNetC(nn.Module):
     def forward(self, x):
         x1 = x[:, :3]
         x2 = x[:, 3:]
-
+        
         with torch.no_grad():
-            out_conv3a = self.backboneModel(
-                x1).permute(0, 3, 1, 2).contiguous()
-            out_conv3b = self.backboneModel(
-                x2).permute(0, 3, 1, 2).contiguous()
-
+            out_conv3a = self.backboneModel(x1)
+            out_conv3b = self.backboneModel(x2)
+            
         out_conv_redir = self.conv_redir(out_conv3a)
         out_correlation = correlate(out_conv3a, out_conv3b)
 
@@ -111,7 +108,7 @@ class FlowNetC(nn.Module):
         flow3_up = crop_like(self.upsampled_flow3_to_2(flow3), out_conv3a)
         out_deconv2 = crop_like(self.deconv2(concat3), out_conv3a)
 
-        concat2 = torch.cat((out_deconv2, flow3_up), 1)
+        concat2 = torch.cat(( out_deconv2, flow3_up), 1)
         flow2 = self.predict_flow2(concat2)
 
         if self.training:
