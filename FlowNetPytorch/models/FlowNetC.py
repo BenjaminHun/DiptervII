@@ -4,7 +4,7 @@ from torch.nn.init import kaiming_normal_, constant_
 import math as m
 from swin_transformer_custom import SwinTransformer
 from .util import conv, predict_flow, deconv, crop_like, correlate
-
+import torchvision
 __all__ = [
     'flownetc', 'flownetc_bn'
 ]
@@ -15,11 +15,18 @@ class FlowNetC(nn.Module):
 
     def __init__(self, batchNorm=True):
         super(FlowNetC, self).__init__()
-        self.H = 320
-        self.W = 448
-        self.swinT = SwinTransformer(img_size=(
-            self.H, self.W), patch_size=4, window_size=4, in_chans=3, depths=[8], embed_dim=96, drop_rate=0.3)
+        model = torchvision.models.swin_t(
+            weights=torchvision.models.Swin_T_Weights).features
+        layers = []
 
+        for m in model.children():
+            layers.append(m)
+
+        self.backboneModel = nn.Sequential(*layers[:2])
+
+        for param in self.backboneModel.parameters():
+            param.requires_grad = False
+        
         self.batchNorm = batchNorm
         # self.conv1 = conv(self.batchNorm,   3,   64, kernel_size=7, stride=2)
         # self.conv2 = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
@@ -67,26 +74,13 @@ class FlowNetC(nn.Module):
     def forward(self, x):
         x1 = x[:, :3]
         x2 = x[:, 3:]
-        # with torch.no_grad():
-        # out_conv1a = self.conv1(x1)
-        out_conv2a = self.swinT(x1)
-        H = self.H
-        W = self.W
-        B, HW, C = out_conv2a.shape
-        newH = int((H/(m.pow((H*W)/HW, 0.5))))
-        newW = int((W/(m.pow((H*W)/HW, 0.5))))
-        out_conv2a = out_conv2a.view(B, C, newH, newW)
-        out_conv3a = self.conv3(out_conv2a)
+        with torch.no_grad():
+            out_conv2a = self.backboneModel(
+                    x1).permute(0, 3, 1, 2).contiguous()
+            out_conv2b = self.backboneModel(
+                    x2).permute(0, 3, 1, 2).contiguous()
 
-        # with torch.no_grad():
-        # out_conv1b = self.conv1(x2)
-        out_conv2b = self.swinT(x2)
-        H = self.H
-        W = self.W
-        B, HW, C = out_conv2b.shape
-        newH = int((H/(m.pow((H*W)/HW, 0.5))))
-        newW = int((W/(m.pow((H*W)/HW, 0.5))))
-        out_conv2b = out_conv2b.view(B, C, newH, newW)
+        out_conv3a = self.conv3(out_conv2a)
         out_conv3b = self.conv3(out_conv2b)
 
         out_conv_redir = self.conv_redir(out_conv3a)
