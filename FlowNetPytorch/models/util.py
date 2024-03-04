@@ -1,6 +1,8 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
+from models.ResNetBlock import ResNetBlock
+
 try:
     from spatial_correlation_sampler import spatial_correlation_sample
 except ImportError as e:
@@ -12,6 +14,9 @@ except ImportError as e:
 
 
 def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
+    resnet = True
+    if resnet:
+        return ResNetBlock(inputC=in_planes, outputC=out_planes, cycle=1, kernel_size=kernel_size, stride=stride)
     if batchNorm:
         return nn.Sequential(
             nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
