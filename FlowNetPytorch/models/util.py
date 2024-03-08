@@ -13,10 +13,9 @@ except ImportError as e:
                       "which is needed for FlowNetC", ImportWarning)
 
 
-def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
-    resnet = True
+def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1,resnet=True):
     if resnet:
-        return ResNetBlock(inputC=in_planes, outputC=out_planes, cycle=1, kernel_size=kernel_size, stride=stride)
+        return ResNetBlock(in_channels=in_planes, out_channels=out_planes, kernelSize=kernel_size, stride=stride)
     if batchNorm:
         return nn.Sequential(
             nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,

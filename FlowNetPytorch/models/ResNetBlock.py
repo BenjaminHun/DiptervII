@@ -1,49 +1,44 @@
 import torch
 import torch.nn as nn
 import torchvision
+import torch.nn.functional as F
 
 
 class ResNetBlock(nn.Module):
-    def __init__(self, inputC, outputC, cycle=1, stride=1, kernel_size=3):
+    def __init__(self, in_channels, out_channels, stride=1, kernelSize=3):
         super(ResNetBlock, self).__init__()
-        self.layers = []
-        self.inputC = inputC
-        self.outputC = outputC
-        self.cycle = cycle
-        self.stride = stride
-        self.kernelSize = kernel_size
-        self.conv2 = nn.Conv2d(in_channels=self.outputC,
-                               out_channels=self.outputC, padding="same", kernel_size=self.kernelSize)
-        self.conv2_2 = nn.Conv2d(in_channels=self.outputC,
-                                 out_channels=self.outputC, padding="same", kernel_size=self.kernelSize)
-        self.batchNorm = nn.BatchNorm2d(self.outputC)
-        self.batchNorm_2 = nn.BatchNorm2d(self.outputC)
-        self.reLU = nn.ReLU()
-        self.dimChange = nn.Conv2d(in_channels=self.inputC,
-                                   out_channels=self.outputC, stride=(self.stride, self.stride), kernel_size=self.kernelSize)
-        self.shortcutSameDim = nn.Sequential()
-        self.shortcutDiffDim = nn.Sequential(
-            nn.Conv2d(self.inputC, self.outputC, kernel_size=1,
-                      stride=stride, bias=False),
-            nn.BatchNorm2d(self.outputC)
-        )
+
+        # First convolutional layer
+        self.conv1 = nn.Conv2d(
+            in_channels, out_channels, kernel_size=kernelSize, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+
+        # Second convolutional layer
+        self.conv2 = nn.Conv2d(out_channels, out_channels,
+                               kernel_size=kernelSize, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+
+        # Shortcut connection if dimensions change
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1,
+                          stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels)
+            )
 
     def forward(self, x):
-        diffDim = self.stride != 1 or self.inputC != self.outputC
-        if diffDim:
-            x = residual = self.shortcutDiffDim(x)
+        # Main path
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
 
-        for i in range(self.cycle):
-            if diffDim and i == 0:
-                pass
-            else:
-                residual = self.shortcutSameDim(x)
-            x = self.conv2(x)
-            x = self.batchNorm(x)
-            x = self.reLU(x)
-            x = self.conv2_2(x)
-            x = self.batchNorm_2(x)
-            x += residual
-            x = self.reLU(x)
+        # Shortcut connection
+        shortcut = self.shortcut(x)
 
-        return x
+        # Element-wise addition
+        out += shortcut
+
+        # Final ReLU activation
+        out = F.relu(out)
+
+        return out
