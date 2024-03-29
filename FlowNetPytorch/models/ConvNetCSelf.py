@@ -14,8 +14,11 @@ class FlowNetC(nn.Module):
 
     def __init__(self, batchNorm=True):
         super(FlowNetC, self).__init__()
+
         self.model = ConvNeXt(in_chans=3, depths=[
-                              1, 1, 1, 1, 1, 1], dims=[64, 128, 256, 512, 512, 1024])
+                              1, 1, 3], dims=[64, 128, 256])
+        self.model2 = ConvNeXt(in_chans=256, depths=[1, 1, 1], dims=[
+            512, 512, 1024])
 
         self.batchNorm = batchNorm
         self.conv_redir = conv(self.batchNorm, 256,   32,
@@ -48,61 +51,67 @@ class FlowNetC(nn.Module):
                 constant_(m.weight, 1)
                 constant_(m.bias, 0)
 
-    def printTensor(func: Callable) -> Callable:
-        def wrapper(*args, **kwargs):
-            # Get the local variables of the function
-            local_vars = func.__globals__.copy()
-            local_vars.update(func.__code__.co_varnames)
-
-            # Iterate through the local variables
-            for var_name, var_value in local_vars.items():
-                if isinstance(var_value, torch.Tensor):
-                    print(
-                        f"Tensor name: '{var_name}' Shape: {var_value.shape}")
-
-            # Call the original function and return its result
-            return func(*args, **kwargs)
-        return wrapper
-
-    @printTensor
+    # @#printTensor
     def forward(self, x):
-        x1 = x[:, :3]
-        x2 = x[:, 3:]
-        x = torch.cat([x1, x2], dim=0)
+        x1 = x[:, :3].to('cuda')
+
+        # print("x1 "+str(x1.shape))
+        x2 = x[:, 3:].to('cuda')
+        # print("x2 "+str(x2.shape))
+        # x = torch.cat([x1, x2], dim=0)
+        # print("x "+str(x.shape))
 
         outConvX = []
+        outConvXa = [None]*3
+        outConvXb = [None]*3
         for i in range(len(self.model.stages)):
-            x = self.model.downsample_layers[i](x)
-            x = self.model.stages[i](x)
+            x1 = self.model.downsample_layers[i](x1)
+            x1 = self.model.stages[i](x1)
+            outConvXa[i] = x1
+        for i in range(len(self.model.stages)):
+            x2 = self.model.downsample_layers[i](x2)
+            x2 = self.model.stages[i](x2)
+            outConvXb[i] = x2
+        for i in range(3):
+            outConvX.append([outConvXa[i], outConvXb[i]])
+        out_conv_redir = self.conv_redir(outConvXa[2])
+        out_correlation = correlate(outConvXa[2], outConvXb[2])
+
+        in_conv3_1 = torch.cat([out_conv_redir, out_correlation], dim=1)
+        out_conv3 = self.conv3_1(in_conv3_1)
+        x = out_conv3
+        outConvX.append(x)
+        for i in range(len(self.model2.stages)):
+            x = self.model2.downsample_layers[i](x)
+            x = self.model2.stages[i](x)
             outConvX.append(x)
-            if i == 2:
-                batchSize = int(outConvX[i].shape[0]/2)
-                xA = outConvX[i][:batchSize, :, :, :]
-                xB = outConvX[i][batchSize:, :, :, :]
-                out_conv_redir = self.conv_redir(xA)
-                out_correlation = correlate(xA, xB)
-                x = torch.cat([out_conv_redir, out_correlation], dim=1)
-                out_conv3 = self.conv3_1(x)
-                outConvX.append(out_conv3)
-                x = out_conv3
+
         flow = []
         flowUp = []
         outDeconv = []
         concat = []
         for i in range(5):
             outConvPlus = outConvX[6-i]
+            # print("outConvPlus "+str(outConvPlus.shape))
             outConv = outConvX[6-(i+1)
-                               ] if i <= 2 else outConvX[1][:batchSize, :, :, :]
+                               ] if i <= 2 else outConvX[1][0]
+            # print("outConv "+str(outConv.shape))
             flow.append(self.predictFlow[i](concat[i-1]) if i >
                         0 else self.predictFlow[i](outConvPlus))
+            # print("flow "+str(flow[-1].shape))
             if i == 4:
                 break
             flowUp.append(crop_like(
                 self.upsampledFlow[i](flow[i]), outConv))
+            # print("flowUp "+str(flowUp[-1].shape))
+
             outDeconv.append(crop_like(self.deconv[i](
                 outConvPlus) if i == 0 else self.deconv[i](concat[i-1]), outConv))
+            # print("outDeconv "+str(outDeconv[-1].shape))
             concat.append(
                 torch.cat((outConv, outDeconv[i], flowUp[i]), 1))
+            # print("concat "+str(concat[-1].shape))
+            # print("end loop")
 
         if self.training:
             return flow[4], flow[3], flow[2], flow[1], flow[0]
