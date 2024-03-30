@@ -90,28 +90,43 @@ class FlowNetC(nn.Module):
         flowUp = []
         outDeconv = []
         concat = []
-        for i in range(5):
-            outConvPlus = outConvX[6-i]
-            # print("outConvPlus "+str(outConvPlus.shape))
-            outConv = outConvX[6-(i+1)
-                               ] if i <= 2 else outConvX[1][0]
-            # print("outConv "+str(outConv.shape))
-            flow.append(self.predictFlow[i](concat[i-1]) if i >
-                        0 else self.predictFlow[i](outConvPlus))
-            # print("flow "+str(flow[-1].shape))
-            if i == 4:
-                break
-            flowUp.append(crop_like(
-                self.upsampledFlow[i](flow[i]), outConv))
-            # print("flowUp "+str(flowUp[-1].shape))
 
-            outDeconv.append(crop_like(self.deconv[i](
-                outConvPlus) if i == 0 else self.deconv[i](concat[i-1]), outConv))
-            # print("outDeconv "+str(outDeconv[-1].shape))
-            concat.append(
-                torch.cat((outConv, outDeconv[i], flowUp[i]), 1))
-            # print("concat "+str(concat[-1].shape))
-            # print("end loop")
+        i = 0
+        outConvPlus = outConvX[6-i]
+        outConv = outConvX[6-(i+1)]
+        flow.append(self.predictFlow[i](outConvPlus))
+        flowUp.append(crop_like(self.upsampledFlow[i](flow[i]), outConv))
+        outDeconv.append(crop_like(self.deconv[i](outConvPlus), outConv))
+        concat.append(torch.cat((outConv, outDeconv[i], flowUp[i]), 1))
+
+        i = 1
+        outConvPlus = outConvX[6-i]
+        outConv = outConvX[6-(i+1)]
+        flow.append(self.predictFlow[i](concat[i-1]))
+        flowUp.append(crop_like(self.upsampledFlow[i](flow[i]), outConv))
+        outDeconv.append(crop_like(self.deconv[i](concat[i-1]), outConv))
+        concat.append(torch.cat((outConv, outDeconv[i], flowUp[i]), 1))
+
+        i = 2
+        outConvPlus = outConvX[6-i]
+        outConv = outConvX[6-(i+1)]
+        flow.append(self.predictFlow[i](concat[i-1]))
+        flowUp.append(crop_like(self.upsampledFlow[i](flow[i]), outConv))
+        outDeconv.append(crop_like(self.deconv[i](concat[i-1]), outConv))
+        concat.append(torch.cat((outConv, outDeconv[i], flowUp[i]), 1))
+
+        i = 3
+        outConvPlus = outConvX[6-i]
+        outConv = outConvX[1][0]
+        flow.append(self.predictFlow[i](concat[i-1]))
+        flowUp.append(crop_like(self.upsampledFlow[i](flow[i]), outConv))
+        outDeconv.append(crop_like(self.deconv[i](concat[i-1]), outConv))
+        concat.append(torch.cat((outConv, outDeconv[i], flowUp[i]), 1))
+
+        i = 4
+        outConvPlus = outConvX[6-i]
+        outConv = outConvX[1][0]
+        flow.append(self.predictFlow[i](concat[i-1]))
 
         if self.training:
             return flow[4], flow[3], flow[2], flow[1], flow[0]
