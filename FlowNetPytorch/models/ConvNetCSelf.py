@@ -14,11 +14,8 @@ class FlowNetC(nn.Module):
 
     def __init__(self, batchNorm=True):
         super(FlowNetC, self).__init__()
-
         self.model = ConvNeXt(in_chans=3, depths=[
-                              1, 1, 3], dims=[64, 128, 256])
-        self.model2 = ConvNeXt(in_chans=256, depths=[1, 1, 1], dims=[
-            512, 512, 1024])
+                              1, 1, 1, 1, 1, 1], dims=[64, 128, 256, 512, 512, 1024])
 
         self.batchNorm = batchNorm
         self.conv_redir = conv(self.batchNorm, 256,   32,
@@ -26,49 +23,25 @@ class FlowNetC(nn.Module):
         self.conv3_1 = conv(self.batchNorm, 473,  256)
 
         self.deconvDims = [(1024, 512), (1026, 256), (770, 128), (386, 64)]
-        self.deconv = []
+        self.deconv = nn.ModuleList()
         for i in range(len(self.deconvDims)):
             self.deconv.append(
-                deconv(self.deconvDims[i][0], self.deconvDims[i][1]).to("cuda"))
-            print(id(self.deconv[i]))
+                deconv(self.deconvDims[i][0], self.deconvDims[i][1]))
 
         self.predictFlowDims = [1024, 1026, 770, 386, 194]
-        self.predictFlow = []
+        self.predictFlow = nn.ModuleList()
         for i in range(len(self.predictFlowDims)):
             self.predictFlow.append(predict_flow(
-                self.predictFlowDims[i]).to("cuda"))
-            print(id(self.predictFlow[i]))
+                self.predictFlowDims[i]))
 
-        self.upsampledFlow = []
-        for i in range(4):
+        self.upsampledFlow = nn.ModuleList()
+        for _ in range(4):
             self.upsampledFlow.append(nn.ConvTranspose2d(
-                2, 2, 4, 2, 1, bias=False).to("cuda"))
-            print(id(self.upsampledFlow[i]))
-
-        
-
-        self.deconv5 = deconv(1024, 512)
-        self.deconv4 = deconv(1026, 256)
-        self.deconv3 = deconv(770, 128)
-        self.deconv2 = deconv(386, 64)
-
-        self.predict_flow6 = predict_flow(1024)
-        self.predict_flow5 = predict_flow(1026)
-        self.predict_flow4 = predict_flow(770)
-        self.predict_flow3 = predict_flow(386)
-        self.predict_flow2 = predict_flow(194)
-
-        self.upsampled_flow6_to_5 = nn.ConvTranspose2d(
-            2, 2, 4, 2, 1, bias=False)
-        self.upsampled_flow5_to_4 = nn.ConvTranspose2d(
-            2, 2, 4, 2, 1, bias=False)
-        self.upsampled_flow4_to_3 = nn.ConvTranspose2d(
-            2, 2, 4, 2, 1, bias=False)
-        self.upsampled_flow3_to_2 = nn.ConvTranspose2d(
-            2, 2, 4, 2, 1, bias=False)
+                2, 2, 4, 2, 1, bias=False))
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+                print(m)
                 kaiming_normal_(m.weight, 0.1)
                 if m.bias is not None:
                     constant_(m.bias, 0)
@@ -76,85 +49,47 @@ class FlowNetC(nn.Module):
                 constant_(m.weight, 1)
                 constant_(m.bias, 0)
 
-    # @#printTensor
     def forward(self, x):
-        x1 = x[:, :3].to('cuda')
-
-        # print("x1 "+str(x1.shape))
-        x2 = x[:, 3:].to('cuda')
-        # print("x2 "+str(x2.shape))
-        # x = torch.cat([x1, x2], dim=0)
-        # print("x "+str(x.shape))
+        x1 = x[:, :3]
+        x2 = x[:, 3:]
+        x = torch.cat([x1, x2], dim=0)
 
         outConvX = []
-        outConvXa = [None]*3
-        outConvXb = [None]*3
         for i in range(len(self.model.stages)):
-            x1 = self.model.downsample_layers[i](x1)
-            x1 = self.model.stages[i](x1)
-            outConvXa[i] = x1
-        for i in range(len(self.model.stages)):
-            x2 = self.model.downsample_layers[i](x2)
-            x2 = self.model.stages[i](x2)
-            outConvXb[i] = x2
-        for i in range(3):
-            outConvX.append([outConvXa[i], outConvXb[i]])
-        out_conv_redir = self.conv_redir(outConvXa[2])
-        out_correlation = correlate(outConvXa[2], outConvXb[2])
-
-        in_conv3_1 = torch.cat([out_conv_redir, out_correlation], dim=1)
-        out_conv3 = self.conv3_1(in_conv3_1)
-        x = out_conv3
-        outConvX.append(x)
-        for i in range(len(self.model2.stages)):
-            x = self.model2.downsample_layers[i](x)
-            x = self.model2.stages[i](x)
+            x = self.model.downsample_layers[i](x)
+            x = self.model.stages[i](x)
             outConvX.append(x)
-
+            if i == 2:
+                batchSize = int(outConvX[i].shape[0]/2)
+                xA = outConvX[i][:batchSize, :, :, :]
+                xB = outConvX[i][batchSize:, :, :, :]
+                out_conv_redir = self.conv_redir(xA)
+                out_correlation = correlate(xA, xB)
+                x = torch.cat([out_conv_redir, out_correlation], dim=1)
+                out_conv3 = self.conv3_1(x)
+                outConvX.append(out_conv3)
+                x = out_conv3
         flow = []
         flowUp = []
         outDeconv = []
         concat = []
-
-        i = 0
-        outConvPlus = outConvX[6-i]
-        outConv = outConvX[6-(i+1)]
-        flow6 = self.predict_flow6(outConvPlus)
-        flow6Up = crop_like(self.upsampled_flow6_to_5(flow6), outConv)
-        outDeconv5 = crop_like(self.deconv5(outConvPlus), outConv)
-        concat5 = torch.cat((outConv, outDeconv5, flow6Up), 1)
-
-        i = 1
-        outConvPlus = outConvX[6-i]
-        outConv = outConvX[6-(i+1)]
-        flow5 = self.predict_flow5(concat5)
-        flow5Up = crop_like(self.upsampled_flow5_to_4(flow5), outConv)
-        outDeconv4 = crop_like(self.deconv4(concat5), outConv)
-        concat4 = torch.cat((outConv, outDeconv4, flow5Up), 1)
-
-        i = 2
-        outConvPlus = outConvX[6-i]
-        outConv = outConvX[6-(i+1)]
-        flow4 = self.predict_flow4(concat4)
-        flow4Up = crop_like(self.upsampled_flow4_to_3(flow4), outConv)
-        outDeconv3 = crop_like(self.deconv3(concat4), outConv)
-        concat3 = torch.cat((outConv, outDeconv3, flow4Up), 1)
-
-        i = 3
-        outConvPlus = outConvX[6-i]
-        outConv = outConvX[1][0]
-        flow3 = self.predict_flow3(concat3)
-        flow3Up = crop_like(self.upsampled_flow3_to_2(flow3), outConv)
-        outDeconv2 = crop_like(self.deconv2(concat3), outConv)
-        concat2 = torch.cat((outConv, outDeconv2, flow3Up), 1)
-
-        i = 4
-        outConvPlus = outConvX[6-i]
-        outConv = outConvX[1][0]
-        flow2 = self.predict_flow2(concat2)
+        for i in range(5):
+            outConvPlus = outConvX[6-i]
+            outConv = outConvX[6-(i+1)
+                               ] if i <= 2 else outConvX[1][:batchSize, :, :, :]
+            flow.append(self.predictFlow[i](concat[i-1]) if i >
+                        0 else self.predictFlow[i](outConvPlus))
+            if i == 4:
+                break
+            flowUp.append(crop_like(
+                self.upsampledFlow[i](flow[i]), outConv))
+            outDeconv.append(crop_like(self.deconv[i](
+                outConvPlus) if i == 0 else self.deconv[i](concat[i-1]), outConv))
+            concat.append(
+                torch.cat((outConv, outDeconv[i], flowUp[i]), 1))
 
         if self.training:
-            return flow2, flow3, flow4, flow5, flow6
+            return flow[4], flow[3], flow[2], flow[1], flow[0]
         else:
             return flow[4]
 
