@@ -52,41 +52,50 @@ class FlowNetC(nn.Module):
     def forward(self, x):
         x1 = x[:, :3]
         x2 = x[:, 3:]
+        batchSize = x1.shape[0]
         x = torch.cat([x1, x2], dim=0)
+        saveableOutConv = [1, 3, 4, 5, 6]
 
         outConvX = []
-        for i in range(len(self.model.stages)):
+        for i in range(len(self.model.stages)):  # vagy ez vagy az
             x = self.model.downsample_layers[i](x)
             x = self.model.stages[i](x)
-            outConvX.append(x)
             if i == 2:
-                batchSize = int(outConvX[i].shape[0]/2)
-                xA = outConvX[i][:batchSize, :, :, :]
-                xB = outConvX[i][batchSize:, :, :, :]
+                # indexeket addig kell felsorolni amig nem akarom az egészet
+                xA = x[:batchSize, :]
+                xB = x[batchSize:, :]
                 out_conv_redir = self.conv_redir(xA)
                 out_correlation = correlate(xA, xB)
                 x = torch.cat([out_conv_redir, out_correlation], dim=1)
                 out_conv3 = self.conv3_1(x)
                 outConvX.append(out_conv3)
                 x = out_conv3
+
+            if i in saveableOutConv:
+                outConvX.append(x[:batchSize, :]if i == 1 else x)
+
         flow = []
         flowUp = []
         outDeconv = []
         concat = []
         for i in range(5):
-            outConvPlus = outConvX[6-i]
-            outConv = outConvX[6-(i+1)
-                               ] if i <= 2 else outConvX[1][:batchSize, :, :, :]
+            outConvPlus = outConvX[4-i]
             flow.append(self.predictFlow[i](concat[i-1]) if i >
                         0 else self.predictFlow[i](outConvPlus))
             if i == 4:
                 break
+            outConv = outConvX[4-(i+1)] if i < 3 else outConvX[0]
             flowUp.append(crop_like(
                 self.upsampledFlow[i](flow[i]), outConv))
             outDeconv.append(crop_like(self.deconv[i](
                 outConvPlus) if i == 0 else self.deconv[i](concat[i-1]), outConv))
             concat.append(
                 torch.cat((outConv, outDeconv[i], flowUp[i]), 1))
+            # conv batchnorm relu->conv relu batchnorm
+            # conv redir->nem kell relu, sima conv meg layernorm
+            # conv3_1->1 méretű convnext blokkot, majd 1x1-es conv segitségével lehuzni a méretet
+            # convnext-nél stem kernel 2 legyen mert a stride is 2
+            # jegyzet 2.7,  +2 link transposedconv helyett ez+conv 3x3 1x1-es padding
 
         if self.training:
             return flow[4], flow[3], flow[2], flow[1], flow[0]
