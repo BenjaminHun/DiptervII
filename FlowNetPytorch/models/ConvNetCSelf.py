@@ -14,8 +14,23 @@ class FlowNetC(nn.Module):
 
     def __init__(self, batchNorm=True):
         super(FlowNetC, self).__init__()
-        self.model = ConvNeXt(in_chans=3, depths=[
-                              1, 1, 1, 1, 1, 1], dims=[64, 128, 256, 512, 512, 1024])
+        #self.model = ConvNeXt(in_chans=3, depths=[1, 1, 1, 1, 1, 1], dims=[
+         #                     64, 128, 256, 512, 512, 1024])
+        
+        self.model = ConvNeXt(in_chans=3, depths=[1, 1, 1], dims=[
+                              64, 128, 256])
+
+        self.upperEncoder = nn.ModuleList()
+
+        self.conv4 = conv(self.batchNorm, 256,  512, stride=2)
+        self.conv4_1 = conv(self.batchNorm, 512,  512)
+        self.upperEncoder.append(nn.Sequential(self.conv4, self.conv4_1))
+        self.conv5 = conv(self.batchNorm, 512,  512, stride=2)
+        self.conv5_1 = conv(self.batchNorm, 512,  512)
+        self.upperEncoder.append(nn.Sequential(self.conv5, self.conv5_1))
+        self.conv6 = conv(self.batchNorm, 512, 1024, stride=2)
+        self.conv6_1 = conv(self.batchNorm, 1024, 1024)
+        self.upperEncoder.append(nn.Sequential(self.conv6, self.conv6_1))
 
         self.batchNorm = batchNorm
         self.conv_redir = conv(self.batchNorm, 256,   32,
@@ -58,18 +73,21 @@ class FlowNetC(nn.Module):
 
         outConvX = []
         for i in range(len(self.model.stages)):  # vagy ez vagy az
-            x = self.model.downsample_layers[i](x)
-            x = self.model.stages[i](x)
-            if i == 2:
-                # indexeket addig kell felsorolni amig nem akarom az egészet
-                xA = x[:batchSize, :]
-                xB = x[batchSize:, :]
-                out_conv_redir = self.conv_redir(xA)
-                out_correlation = correlate(xA, xB)
-                x = torch.cat([out_conv_redir, out_correlation], dim=1)
-                out_conv3 = self.conv3_1(x)
-                outConvX.append(out_conv3)
-                x = out_conv3
+            if i<3:
+                x = self.model.downsample_layers[i](x)
+                x = self.model.stages[i](x)
+                if i == 2:
+                    # indexeket addig kell felsorolni amig nem akarom az egészet
+                    xA = x[:batchSize, :]
+                    xB = x[batchSize:, :]
+                    out_conv_redir = self.conv_redir(xA)
+                    out_correlation = correlate(xA, xB)
+                    x = torch.cat([out_conv_redir, out_correlation], dim=1)
+                    out_conv3 = self.conv3_1(x)
+                    outConvX.append(out_conv3)
+                    x = out_conv3
+            else:
+                x=self.upperEncoder[i-3](x)
 
             if i in saveableOutConv:
                 outConvX.append(x[:batchSize, :]if i == 1 else x)
