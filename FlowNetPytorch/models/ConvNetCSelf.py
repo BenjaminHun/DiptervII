@@ -50,8 +50,9 @@ class FlowNetC(nn.Module):
 
         self.upsampledFlow = nn.ModuleList()
         for _ in range(4):
-            self.upsampledFlow.append(nn.ConvTranspose2d(
-                2, 2, 4, 2, 1, bias=False))
+            #self.upsampledFlow.append(nn.ConvTranspose2d(
+            #    2, 2, 4, 2, 1, bias=False))
+            self.upsampledFlow.append(nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True))
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
