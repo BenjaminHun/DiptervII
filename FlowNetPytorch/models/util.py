@@ -14,19 +14,19 @@ except ImportError as e:
 
 
 def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
-    useSkipConnection=True
-    if batchNorm and not useSkipConnection:
+    useSkipConnection = True
+    if useSkipConnection:
+        return nn.Sequential(
+            ConvBlockWithSkipConnection(in_planes, out_planes, kernel_size, stride))
+    # Add more layers as needed
+
+    if batchNorm:
         return nn.Sequential(
             nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
                       stride=stride, padding=(kernel_size-1)//2, bias=False),
-            nn.BatchNorm2d(out_planes), #TODO
+            nn.BatchNorm2d(out_planes),  # TODO
             nn.LeakyReLU(0.1, inplace=True)
         )
-    elif batchNorm and useSkipConnection:
-        return nn.Sequential(
-        ConvBlockWithSkipConnection(in_planes, out_planes, kernel_size, stride),
-    # Add more layers as needed
-)
     else:
         return nn.Sequential(
             nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
