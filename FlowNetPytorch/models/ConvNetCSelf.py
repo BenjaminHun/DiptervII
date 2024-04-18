@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn.init import kaiming_normal_, constant_
-from .util import conv, predict_flow, deconv, crop_like, correlate
+from .util import conv, predict_flow, deconv, crop_like, correlate, conv_redir
 from .ConvNext import ConvNeXt
 from typing import Any, Callable
 __all__ = [
@@ -31,8 +31,9 @@ class FlowNetC(nn.Module):
         self.conv6 = conv(self.batchNorm, 512, 1024, stride=2)
         self.conv6_1 = conv(self.batchNorm, 1024, 1024)
         self.upperEncoder.append(nn.Sequential(self.conv6, self.conv6_1))
+        self.layernorm=nn.LayerNorm(32)
 
-        self.conv_redir = conv(self.batchNorm, 256,   32,
+        self.conv_redir = conv_redir(self.batchNorm, 256,   32,
                                kernel_size=1, stride=1)
         self.conv3_1 = conv(self.batchNorm, 473,  256)
 
@@ -81,6 +82,7 @@ class FlowNetC(nn.Module):
                     xA = x[:batchSize, :]
                     xB = x[batchSize:, :]
                     out_conv_redir = self.conv_redir(xA)
+                    out_conv_redir=self.layernorm(out_conv_redir.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)
                     out_correlation = correlate(xA, xB)
                     x = torch.cat([out_conv_redir, out_correlation], dim=1)
                     out_conv3 = self.conv3_1(x)

@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
+from models.ConvSkipWOBatchnorm import ConvSkipWOBatchnorm
 from models.ConvBlockWithSkipConnection import ConvBlockWithSkipConnection
 
 try:
@@ -17,7 +18,7 @@ def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
     useSkipConnection = True
     if useSkipConnection:
         return nn.Sequential(
-            ConvBlockWithSkipConnection(in_planes, out_planes, kernel_size, stride))
+            ConvSkipWOBatchnorm(in_planes, out_planes, kernel_size, stride))
     # Add more layers as needed
 
     if batchNorm:
@@ -32,6 +33,12 @@ def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
             nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
                       stride=stride, padding=(kernel_size-1)//2, bias=True),
             nn.LeakyReLU(0.1, inplace=True)
+        )
+
+def conv_redir(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
+    return nn.Sequential(
+            nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
+                      stride=stride, padding=(kernel_size-1)//2, bias=True),
         )
 
 
