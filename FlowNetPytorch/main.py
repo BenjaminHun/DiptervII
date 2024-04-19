@@ -240,11 +240,10 @@ def main():
         train_writer.add_scalar('mean EPE', train_EPE, epoch)
 
         # evaluate on validation set
-
+        '''
         with torch.no_grad():
             EPE = validate(val_loader, model, epoch, output_writers)
         test_writer.add_scalar('mean EPE', EPE, epoch)
-
         if best_EPE < 0:
             best_EPE = EPE
 
@@ -256,7 +255,7 @@ def main():
             'state_dict': model.module.state_dict(),
             'best_EPE': best_EPE,
             'div_flow': args.div_flow
-        }, is_best, save_path)
+        }, is_best, save_path)'''
 
 
 def train(train_loader, model, optimizer, epoch, train_writer):
