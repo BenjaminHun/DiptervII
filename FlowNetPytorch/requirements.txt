@@ -8,3 +8,5 @@ argparse
 path
 tqdm
 scipy
+flask>=2.0  
+Werkzeug>=2.0
