@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn.init import kaiming_normal_, constant_
-from .util import conv, predict_flow, deconv, crop_like, correlate
+from .util import conv, predict_flow, deconv, crop_like, correlate, largeSkipConnectionConv
 import models
 
 __all__ = [
@@ -17,18 +17,33 @@ class FlowNetC(nn.Module):
 
         self.batchNorm = batchNorm
         self.conv1 = conv(self.batchNorm,   3,   64, kernel_size=7, stride=2)
+        self.conv1Skip = largeSkipConnectionConv(self.batchNorm,   3,   64,
+                                                 kernel_size=7, stride=2)
         self.conv2 = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
+        self.conv2Skip = largeSkipConnectionConv(self.batchNorm,   64,
+                                                 128, kernel_size=5, stride=2)
         self.conv3 = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
+        self.conv3Skip = largeSkipConnectionConv(self.batchNorm,   128,
+                                                 256, kernel_size=5, stride=2)
+
         self.conv_redir = conv(self.batchNorm, 256,   32,
                                kernel_size=1, stride=1)
 
         self.conv3_1 = conv(self.batchNorm, 473,  256)
+        self.conv3xSkip = largeSkipConnectionConv(
+            self.batchNorm, 473, 256, stride=1)
         self.conv4 = conv(self.batchNorm, 256,  512, stride=2)
         self.conv4_1 = conv(self.batchNorm, 512,  512)
+        self.conv4Skip = largeSkipConnectionConv(
+            self.batchNorm, 256, 512, stride=2)
         self.conv5 = conv(self.batchNorm, 512,  512, stride=2)
         self.conv5_1 = conv(self.batchNorm, 512,  512)
+        self.conv5Skip = largeSkipConnectionConv(
+            self.batchNorm, 512, 512, stride=2)
+
         self.conv6 = conv(self.batchNorm, 512, 1024, stride=2)
         self.conv6_1 = conv(self.batchNorm, 1024, 1024)
+        self.conv6Skip = conv(self.batchNorm, 512, 1024, stride=2)
 
         self.deconv5 = deconv(1024, 512)
         self.deconv4 = deconv(1026, 256)
@@ -65,16 +80,16 @@ class FlowNetC(nn.Module):
 
         out_conv1a = self.conv1(x1)
         # print("out_conv1a: "+str(out_conv1a.shape))
-        out_conv2a = self.conv2(out_conv1a)
+        out_conv2a = self.conv2(out_conv1a)+self.conv2Skip(out_conv1a)
         # print("out_conv2a: "+str(out_conv2a.shape))
-        out_conv3a = self.conv3(out_conv2a)
+        out_conv3a = self.conv3(out_conv2a)+self.conv3Skip(out_conv2a)
         # print("out_conv3a: "+str(out_conv3a.shape))
 
         out_conv1b = self.conv1(x2)
         # print("out_conv1b: "+str(out_conv1b.shape))
-        out_conv2b = self.conv2(out_conv1b)
+        out_conv2b = self.conv2(out_conv1b)+self.conv2Skip(out_conv1b)
         # print("out_conv2b: "+str(out_conv2b.shape))
-        out_conv3b = self.conv3(out_conv2b)
+        out_conv3b = self.conv3(out_conv2b)+self.conv3Skip(out_conv2b)
         # print("out_conv3b: "+str(out_conv3b.shape))
 
         out_conv_redir = self.conv_redir(out_conv3a)
@@ -84,13 +99,16 @@ class FlowNetC(nn.Module):
         in_conv3_1 = torch.cat([out_conv_redir, out_correlation], dim=1)
         # print("in_conv3_1: "+str(in_conv3_1.shape))
 
-        out_conv3 = self.conv3_1(in_conv3_1)
+        out_conv3 = self.conv3_1(in_conv3_1)+self.conv3xSkip(in_conv3_1)
         # print("out_conv3: "+str(out_conv3.shape))
-        out_conv4 = self.conv4_1(self.conv4(out_conv3))
+        out_conv4 = self.conv4_1(self.conv4(out_conv3)) + \
+            self.conv4Skip(out_conv3)
         # print("out_conv4: "+str(out_conv4.shape))
-        out_conv5 = self.conv5_1(self.conv5(out_conv4))
+        out_conv5 = self.conv5_1(self.conv5(out_conv4)) + \
+            self.conv5Skip(out_conv4)
         # print("out_conv5: "+str(out_conv5.shape))
-        out_conv6 = self.conv6_1(self.conv6(out_conv5))
+        out_conv6 = self.conv6_1(self.conv6(out_conv5)) + \
+            self.conv6Skip(out_conv5)
         # print("out_conv6: "+str(out_conv6.shape))
 # 0
         flow6 = self.predict_flow6(out_conv6)

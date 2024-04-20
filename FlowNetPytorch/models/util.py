@@ -15,7 +15,7 @@ except ImportError as e:
 
 
 def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
-    useSkipConnection = True
+    useSkipConnection = False
 
     if useSkipConnection:
         return nn.Sequential(
@@ -36,6 +36,14 @@ def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
             nn.LeakyReLU(0.1, inplace=True)
         )
 
+def largeSkipConnectionConv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
+    if in_planes != out_planes or stride != 1:
+        return nn.Sequential(
+            nn.Conv2d(in_planes, out_planes, kernel_size=1,
+                      stride=stride, padding=0, bias=True),
+            nn.LeakyReLU(0.1, inplace=True))
+    else:
+        return nn.Sequential(nn.LeakyReLU(0.1, inplace=True))
 
 def predict_flow(in_planes):
     return nn.Conv2d(in_planes, 2, kernel_size=3, stride=1, padding=1, bias=False)

@@ -145,7 +145,7 @@ def main():
         np.random.seed(args.seed_split)
 
     train_writer = SummaryWriter(os.path.join(save_path, 'train'))
-    test_writer = SummaryWriter(os.path.join(save_path, 'test'))
+    #test_writer = SummaryWriter(os.path.join(save_path, 'test'))
     output_writers = []
     for i in range(3):
         output_writers.append(SummaryWriter(
