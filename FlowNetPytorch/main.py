@@ -12,6 +12,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
+from models.CosineAnnealingSchedule import CosineAnnealingSchedule
 import flow_transforms
 import models
 import datasets
@@ -103,7 +104,7 @@ def main():
     args.epochs = 300
     args.epoch_size = 1000
     args.batch_size = 10
-    args.lr = 0.0001
+    args.lr = 0.001
     args.no_date = False
     args.dataset = 'flying_chairs'
     args.seed_split = False
@@ -145,7 +146,7 @@ def main():
         np.random.seed(args.seed_split)
 
     train_writer = SummaryWriter(os.path.join(save_path, 'train'))
-    #test_writer = SummaryWriter(os.path.join(save_path, 'test'))
+    # test_writer = SummaryWriter(os.path.join(save_path, 'test'))
     output_writers = []
     for i in range(3):
         output_writers.append(SummaryWriter(
@@ -228,15 +229,17 @@ def main():
         best_EPE = validate(val_loader, model, 0, output_writers)
         return
 
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        optimizer, milestones=args.milestones, gamma=0.5)
+    # scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        # optimizer, milestones=args.milestones, gamma=0.5)
+    scheduler = CosineAnnealingSchedule(
+        initial_lr=args.lr, T_max=300, eta_min=1e-8)
 
     for epoch in range(args.start_epoch, args.epochs):
-        scheduler.step()
+        # scheduler.step()
 
         # train for one epoch
         train_loss, train_EPE = train(
-            train_loader, model, optimizer, epoch, train_writer)
+            train_loader, model, optimizer, epoch, train_writer, scheduler)
         train_writer.add_scalar('mean EPE', train_EPE, epoch)
 
         # evaluate on validation set
@@ -258,7 +261,7 @@ def main():
         }, is_best, save_path)'''
 
 
-def train(train_loader, model, optimizer, epoch, train_writer):
+def train(train_loader, model, optimizer, epoch, train_writer, scheduler):
     global n_iter, args
     batch_time = AverageMeter()
     data_time = AverageMeter()
@@ -300,6 +303,10 @@ def train(train_loader, model, optimizer, epoch, train_writer):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        lr = scheduler.get_lr(epoch)
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
 
         # measure elapsed time
         batch_time.update(time.time() - end)
