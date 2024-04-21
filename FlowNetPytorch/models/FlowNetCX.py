@@ -21,8 +21,9 @@ class FlowNetC(nn.Module):
         self.conv3 = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
         self.conv_redir = conv(self.batchNorm, 256,   32,
                                kernel_size=1, stride=1)
+        self.correlationMaxPool = nn.MaxPool2d(3, stride=2,padding=1)
 
-        self.conv3_1 = conv(self.batchNorm, 473,  256)
+        self.conv3_1 = conv(self.batchNorm, 914,  256)
         self.conv4 = conv(self.batchNorm, 256,  512, stride=2)
         self.conv4_1 = conv(self.batchNorm, 512,  512)
         self.conv5 = conv(self.batchNorm, 512,  512, stride=2)
@@ -41,10 +42,14 @@ class FlowNetC(nn.Module):
         self.predict_flow3 = predict_flow(386)
         self.predict_flow2 = predict_flow(194)
 
-        self.upsampled_flow6_to_5 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-        self.upsampled_flow5_to_4 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-        self.upsampled_flow4_to_3 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-        self.upsampled_flow3_to_2 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.upsampled_flow6_to_5 = nn.ConvTranspose2d(
+            2, 2, 4, 2, 1, bias=False)
+        self.upsampled_flow5_to_4 = nn.ConvTranspose2d(
+            2, 2, 4, 2, 1, bias=False)
+        self.upsampled_flow4_to_3 = nn.ConvTranspose2d(
+            2, 2, 4, 2, 1, bias=False)
+        self.upsampled_flow3_to_2 = nn.ConvTranspose2d(
+            2, 2, 4, 2, 1, bias=False)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
@@ -75,9 +80,12 @@ class FlowNetC(nn.Module):
 
         out_conv_redir = self.conv_redir(out_conv3a)
         # print("out_conv_redir: "+str(out_conv_redir.shape))
-        out_correlation = correlate(out_conv3a, out_conv3b)
+        out_correlation1 = correlate(out_conv3a, out_conv3b)
+        out_correlation2 = correlate(out_conv2a, out_conv2b)
+        out_correlation2 = self.correlationMaxPool(out_correlation2)
         # print("out_correlation: "+str(out_correlation.shape))
-        in_conv3_1 = torch.cat([out_conv_redir, out_correlation], dim=1)
+        in_conv3_1 = torch.cat(
+            [out_conv_redir, out_correlation1, out_correlation2], dim=1)
         # print("in_conv3_1: "+str(in_conv3_1.shape))
 
         out_conv3 = self.conv3_1(in_conv3_1)
