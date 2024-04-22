@@ -21,9 +21,10 @@ class FlowNetC(nn.Module):
         self.conv3 = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
         self.conv_redir = conv(self.batchNorm, 256,   32,
                                kernel_size=1, stride=1)
-        self.correlationMaxPool = nn.MaxPool2d(3, stride=2,padding=1)
+        self.correlationMaxPool1 = nn.MaxPool2d(2, stride=2, padding=0)
+        self.correlationMaxPool2 = nn.MaxPool2d(4, stride=4, padding=1)
 
-        self.conv3_1 = conv(self.batchNorm, 914,  256)
+        self.conv3_1 = conv(self.batchNorm, 395,  256)
         self.conv4 = conv(self.batchNorm, 256,  512, stride=2)
         self.conv4_1 = conv(self.batchNorm, 512,  512)
         self.conv5 = conv(self.batchNorm, 512,  512, stride=2)
@@ -82,10 +83,13 @@ class FlowNetC(nn.Module):
         # print("out_conv_redir: "+str(out_conv_redir.shape))
         out_correlation1 = correlate(out_conv3a, out_conv3b)
         out_correlation2 = correlate(out_conv2a, out_conv2b)
-        out_correlation2 = self.correlationMaxPool(out_correlation2)
+        out_correlation3 = correlate(out_conv1a, out_conv1b)
+        out_correlation2 = self.correlationMaxPool1(out_correlation2)
+        out_correlation3 = self.correlationMaxPool2(out_correlation3)
+
         # print("out_correlation: "+str(out_correlation.shape))
         in_conv3_1 = torch.cat(
-            [out_conv_redir, out_correlation1, out_correlation2], dim=1)
+            [out_conv_redir, out_correlation1, out_correlation2, out_correlation3], dim=1)
         # print("in_conv3_1: "+str(in_conv3_1.shape))
 
         out_conv3 = self.conv3_1(in_conv3_1)
