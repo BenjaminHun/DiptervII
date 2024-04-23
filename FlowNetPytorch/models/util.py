@@ -61,7 +61,7 @@ def correlate(input1, input2):
     out_corr = spatial_correlation_sample(input1,
                                           input2,
                                           kernel_size=1,
-                                          patch_size=11,
+                                          patch_size=21,
                                           stride=1,
                                           padding=0,
                                           dilation_patch=2)
