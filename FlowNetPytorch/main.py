@@ -145,7 +145,7 @@ def main():
         np.random.seed(args.seed_split)
 
     train_writer = SummaryWriter(os.path.join(save_path, 'train'))
-    #test_writer = SummaryWriter(os.path.join(save_path, 'test'))
+    test_writer = SummaryWriter(os.path.join(save_path, 'test'))
     output_writers = []
     for i in range(3):
         output_writers.append(SummaryWriter(
@@ -240,7 +240,7 @@ def main():
         train_writer.add_scalar('mean EPE', train_EPE, epoch)
 
         # evaluate on validation set
-        '''
+
         with torch.no_grad():
             EPE = validate(val_loader, model, epoch, output_writers)
         test_writer.add_scalar('mean EPE', EPE, epoch)
@@ -255,7 +255,7 @@ def main():
             'state_dict': model.module.state_dict(),
             'best_EPE': best_EPE,
             'div_flow': args.div_flow
-        }, is_best, save_path)'''
+        }, is_best, save_path)
 
 
 def train(train_loader, model, optimizer, epoch, train_writer):
