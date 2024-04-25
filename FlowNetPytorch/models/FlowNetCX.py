@@ -19,10 +19,10 @@ class FlowNetC(nn.Module):
         self.conv1 = conv(self.batchNorm,   3,   64, kernel_size=7, stride=2)
         self.conv2 = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
         self.conv3 = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
-        self.conv_redir = conv(self.batchNorm, 256,   64,
+        self.conv_redir = conv(self.batchNorm, 256,   32,
                                kernel_size=1, stride=1)
 
-        self.conv3_1 = conv(self.batchNorm, 505,  256)
+        self.conv3_1 = conv(self.batchNorm, 441,  256)
         self.conv4 = conv(self.batchNorm, 256,  512, stride=2)
         self.conv4_1 = conv(self.batchNorm, 512,  512)
         self.conv5 = conv(self.batchNorm, 512,  512, stride=2)
@@ -81,7 +81,7 @@ class FlowNetC(nn.Module):
         # print("out_conv_redir: "+str(out_conv_redir.shape))
         out_correlation = correlate(out_conv3a, out_conv3b)
         # print("out_correlation: "+str(out_correlation.shape))
-        in_conv3_1 = torch.cat([out_conv_redir, out_correlation], dim=1)
+        in_conv3_1 = out_correlation
         # print("in_conv3_1: "+str(in_conv3_1.shape))
 
         out_conv3 = self.conv3_1(in_conv3_1)
