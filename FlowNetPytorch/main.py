@@ -102,7 +102,7 @@ def main():
     args.solver = 'adam'
     args.epochs = 300
     args.epoch_size = 1000
-    args.batch_size = 10
+    args.batch_size = 30
     args.lr = 0.0001
     args.no_date = False
     args.dataset = 'flying_chairs'
