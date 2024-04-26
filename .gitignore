@@ -17,3 +17,7 @@ FlowNetPytorch/models/ConvNext.py
 FlowNetPytorch/swin_transformer_custom.py
 FlowNetPytorch/visualization_layers_flownet.py
 FlowNetPytorch/models/FlowNetCNew.py
+FlowNetPytorch/models/CosineAnnealingSchedule.py
+.gitignore
+FlowNetPytorch/requirements.txt
+FlowNetPytorch/requirements.txt
