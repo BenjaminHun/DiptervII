@@ -17,7 +17,7 @@ class PatchEmbeddings(nn.Module):
         # Create a projection layer to convert the image into patches
         # The layer projects each patch into a vector of size hidden_size
         self.projection = nn.Conv2d(
-            self.num_channels, self.hidden_size, kernel_size=self.patch_size, stride=self.patch_size).to("cuda")
+            self.num_channels, self.hidden_size, kernel_size=self.patch_size, stride=self.patch_size)
 
     def forward(self, x):  # 10,3,32,32
         # (batch_size, num_channels, image_size, image_size) -> (batch_size, num_patches, hidden_size)

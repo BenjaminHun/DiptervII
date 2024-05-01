@@ -12,7 +12,6 @@ class ViT(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.checkpoints = []
 
         # Create the embedding module
 
@@ -26,6 +25,7 @@ class ViT(nn.Module):
             self.encoder.append(Encoder(self.config, i))
 
     def forward(self, x):
+        checkpoints = []
         for i in range(self.config["num_depths"]):
             # Calculate the embedding output
             x = self.embedding[i](x)
@@ -34,6 +34,6 @@ class ViT(nn.Module):
             x = x.transpose(-1, -2)
             x = x.view(
                 self.config["batch_size"], self.config["hidden_size"][i], self.config["image_size"][i][0]//self.config["patch_size"][0], self.config["image_size"][i][1]//self.config["patch_size"][1])
-            self.checkpoints.append(x)
+            checkpoints.append(x)
 
-        return self.checkpoints
+        return checkpoints

@@ -11,10 +11,10 @@ class Block(nn.Module):
 
     def __init__(self, config, i):
         super().__init__()
-        self.attention = MultiHeadAttention(config, i).to("cuda")
-        self.layernorm_1 = nn.LayerNorm(config["hidden_size"][i]).to("cuda")
-        self.mlp = MLP(config, i).to("cuda")
-        self.layernorm_2 = nn.LayerNorm(config["hidden_size"][i]).to("cuda")
+        self.attention = MultiHeadAttention(config, i)
+        self.layernorm_1 = nn.LayerNorm(config["hidden_size"][i])
+        self.mlp = MLP(config, i)
+        self.layernorm_2 = nn.LayerNorm(config["hidden_size"][i])
 
     def forward(self, x):  # 10,65,48
         # Self-attention

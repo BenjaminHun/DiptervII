@@ -16,12 +16,12 @@ class FlowNetC(nn.Module):
 
     def __init__(self, batchNorm=True):
         super(FlowNetC, self).__init__()
-        config = {
+        self.config = {
             "patch_size": (2, 2),
             "hidden_size": (512, 512, 1024),
             "batch_size": 10,
             "num_hidden_layers": 4,
-            "num_attention_heads": 4,
+            "num_attention_heads": 1,
             "intermediate_size": [(4 * 512), (4*512), (4*1024)],
             "hidden_dropout_prob": 0.0,
             "attention_probs_dropout_prob": 0.0,
@@ -32,7 +32,8 @@ class FlowNetC(nn.Module):
             "num_channels": [256, 512, 512],
             "qkv_bias": True}
 
-        self.vit = ViT(config)
+        self.vit = ViT(self.config)
+        # self.vit = self.vit.to("cuda")
 
         self.batchNorm = batchNorm
         self.conv1 = conv(self.batchNorm,   3,   64, kernel_size=7, stride=2)
@@ -109,13 +110,26 @@ class FlowNetC(nn.Module):
 
         out_conv3 = self.conv3_1(in_conv3_1)
         # print("out_conv3: "+str(out_conv3.shape))
-        out_conv3 = out_conv3
-        vitOutput = self.vit(out_conv3)
-        out_conv4 = vitOutput[0]
+        vitOutputs = []
+        # vitOutput = self.vit(out_conv3)
+        x = out_conv3
+        for i in range(self.config["num_depths"]):
+            # Calculate the embedding output
+            x = self.vit.embedding[i](x)
+            # Calculate the encoder's output
+            x = self.vit.encoder[i](x)  # 10,64,48
+            x = x.transpose(-1, -2)
+            x = x.view(
+                self.config["batch_size"], self.config["hidden_size"][i], self.config["image_size"][i][0]//self.config["patch_size"][0], self.config["image_size"][i][1]//self.config["patch_size"][1])
+            vitOutputs.append(x)
+        # out_conv4 = self.conv4_1(self.conv4(out_conv3))
+        out_conv4 = vitOutputs[0]
         # print("out_conv4: "+str(out_conv4.shape))
-        out_conv5 = vitOutput[1]
+        # out_conv5 = self.conv5_1(self.conv5(out_conv4))
+        out_conv5 = vitOutputs[1]
         # print("out_conv5: "+str(out_conv5.shape))
-        out_conv6 = vitOutput[2]
+        # out_conv6 = self.conv6_1(self.conv6(out_conv5))
+        out_conv6 = vitOutputs[2]
         # print("out_conv6: "+str(out_conv6.shape))
 # 0
         flow6 = self.predict_flow6(out_conv6)

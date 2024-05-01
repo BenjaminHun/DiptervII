@@ -19,7 +19,7 @@ class Embeddings(nn.Module):
         # Add 1 to the sequence length for the [CLS] token
         self.position_embeddings = \
             nn.Parameter(torch.randn(
-                1, self.patch_embeddings.num_patches, config["hidden_size"][i])).to("cuda")
+                1, self.patch_embeddings.num_patches, config["hidden_size"][i]))
         self.dropout = nn.Dropout(config["hidden_dropout_prob"])
 
     def forward(self, x):  # 10,3,32,32
