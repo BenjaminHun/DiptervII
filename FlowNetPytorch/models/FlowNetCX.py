@@ -54,12 +54,12 @@ class FlowNetC(nn.Module):
 
         self.deconv5 = deconv(1024, 512)
         self.deconv4 = deconv(514, 256)
-        self.deconv3 = deconv(770, 128)
+        self.deconv3 = deconv(770-512, 128)
         self.deconv2 = deconv(386, 64)
 
         self.predict_flow6 = predict_flow(1024)
         self.predict_flow5 = predict_flow(514)
-        self.predict_flow4 = predict_flow(770)
+        self.predict_flow4 = predict_flow(770-512)
         self.predict_flow3 = predict_flow(386)
         self.predict_flow2 = predict_flow(194)
 
@@ -120,8 +120,8 @@ class FlowNetC(nn.Module):
             # Calculate the encoder's output
             x = self.vit.encoder[i](x)  # 10,64,48
             x = x.transpose(-1, -2)
-            newW=w//pow(2,(i+3))
-            newH=h//pow(2,(i+3))
+            newW = w//pow(2, (i+3))
+            newH = h//pow(2, (i+3))
             x = x.view(
                 batch_size, self.config["hidden_size"][i], newW//self.config["patch_size"][0], newH//self.config["patch_size"][1])
             vitOutputs.append(x)
@@ -137,10 +137,10 @@ class FlowNetC(nn.Module):
 # 0
         flow6 = self.predict_flow6(out_conv6)
         # print("flow6: "+str(flow6.shape))
-        #flow6_up = crop_like(self.upsampled_flow6_to_5(flow6), out_conv5)
+        # flow6_up = crop_like(self.upsampled_flow6_to_5(flow6), out_conv5)
         flow6_up = self.upsampled_flow6_to_5(flow6)
         # print("flow6_up: "+str(flow6_up.shape))
-        #out_deconv5 = crop_like(self.deconv5(out_conv6), out_conv5)
+        # out_deconv5 = crop_like(self.deconv5(out_conv6), out_conv5)
         out_deconv5 = self.deconv5(out_conv6)
         # print("out_deconv5: "+str(out_deconv5.shape))
         concat5 = torch.cat((out_deconv5, flow6_up), 1)
@@ -148,11 +148,11 @@ class FlowNetC(nn.Module):
         # print("concat5: "+str(concat5.shape))
         flow5 = self.predict_flow5(concat5)
         # print("flow5: "+str(flow5.shape))
-        flow5_up = crop_like(self.upsampled_flow5_to_4(flow5), out_conv4)
+        flow5_up = self.upsampled_flow5_to_4(flow5)
         # print("flow5_up: "+str(flow5_up.shape))
-        out_deconv4 = crop_like(self.deconv4(concat5), out_conv4)
+        out_deconv4 = self.deconv4(concat5)
         # print("out_deconv4: "+str(out_deconv4.shape))
-        concat4 = torch.cat((out_conv4, out_deconv4, flow5_up), 1)
+        concat4 = torch.cat((out_deconv4, flow5_up), 1)
 # 2
         # print("concat4: "+str(concat4.shape))
         flow4 = self.predict_flow4(concat4)
