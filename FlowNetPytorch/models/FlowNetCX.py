@@ -17,19 +17,19 @@ class FlowNetC(nn.Module):
     def __init__(self, batchNorm=True):
         super(FlowNetC, self).__init__()
         self.config = {
-            "patch_size": (2, 2),
-            "hidden_size": (512, 512, 1024),
+            "patch_size": (4, 4),
+            "hidden_size": (1024, 0),
             "batch_size": 10,
             "num_hidden_layers": 4,
             "num_attention_heads": 1,
-            "intermediate_size": [(4 * 512), (4*512), (4*1024)],
+            "intermediate_size": [(4 * 1024)],
             "hidden_dropout_prob": 0.0,
             "attention_probs_dropout_prob": 0.0,
             "initializer_range": 0.02,
-            "image_size": [(40, 56), (20, 28), (10, 14)],
+            "image_size": [(40, 56)],
             "num_classes": 10,
-            "num_depths": 3,
-            "num_channels": [256, 512, 512],
+            "num_depths": 1,
+            "num_channels": [256],
             "qkv_bias": True}
 
         self.vit = ViT(self.config)
@@ -126,13 +126,8 @@ class FlowNetC(nn.Module):
                 batch_size, self.config["hidden_size"][i], newW//self.config["patch_size"][0], newH//self.config["patch_size"][1])
             vitOutputs.append(x)
         # out_conv4 = self.conv4_1(self.conv4(out_conv3))
-        out_conv4 = vitOutputs[0]
-        # print("out_conv4: "+str(out_conv4.shape))
-        # out_conv5 = self.conv5_1(self.conv5(out_conv4))
-        out_conv5 = vitOutputs[1]
-        # print("out_conv5: "+str(out_conv5.shape))
-        # out_conv6 = self.conv6_1(self.conv6(out_conv5))
-        out_conv6 = vitOutputs[2]
+
+        out_conv6 = vitOutputs[0]
         # print("out_conv6: "+str(out_conv6.shape))
 # 0
         flow6 = self.predict_flow6(out_conv6)
