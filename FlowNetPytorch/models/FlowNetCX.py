@@ -17,8 +17,8 @@ class FlowNetC(nn.Module):
     def __init__(self, batchNorm=True):
         super(FlowNetC, self).__init__()
         self.config = {
-            "patch_size": (4, 4),
-            "hidden_size": (1024, 0),
+            "patch_size": (2, 2),
+            "hidden_size": (512, 0),
             "batch_size": 10,
             "num_hidden_layers": 4,
             "num_attention_heads": 1,
@@ -52,13 +52,13 @@ class FlowNetC(nn.Module):
         self.conv6 = conv(self.batchNorm, 512, 1024, stride=2)
         self.conv6_1 = conv(self.batchNorm, 1024, 1024)
 
-        self.deconv5 = deconv(1024, 512)
-        self.deconv4 = deconv(514, 256)
+        #self.deconv5 = deconv(1024, 512)
+        self.deconv4 = deconv(512, 256)
         self.deconv3 = deconv(770-512, 128)
         self.deconv2 = deconv(386, 64)
 
-        self.predict_flow6 = predict_flow(1024)
-        self.predict_flow5 = predict_flow(514)
+        #self.predict_flow6 = predict_flow(1024)
+        self.predict_flow5 = predict_flow(512)
         self.predict_flow4 = predict_flow(770-512)
         self.predict_flow3 = predict_flow(386)
         self.predict_flow2 = predict_flow(194)
@@ -127,25 +127,25 @@ class FlowNetC(nn.Module):
             vitOutputs.append(x)
         # out_conv4 = self.conv4_1(self.conv4(out_conv3))
 
-        out_conv6 = vitOutputs[0]
-        # print("out_conv6: "+str(out_conv6.shape))
+        out_convViT = vitOutputs[0]
+        ## print("out_conv6: "+str(out_conv6.shape))
 # 0
-        flow6 = self.predict_flow6(out_conv6)
-        # print("flow6: "+str(flow6.shape))
+        # flow6 = self.predict_flow6(out_conv6)
+        # # print("flow6: "+str(flow6.shape))
         # flow6_up = crop_like(self.upsampled_flow6_to_5(flow6), out_conv5)
-        flow6_up = self.upsampled_flow6_to_5(flow6)
-        # print("flow6_up: "+str(flow6_up.shape))
+        # flow6_up = self.upsampled_flow6_to_5(flow6)
+        # # print("flow6_up: "+str(flow6_up.shape))
         # out_deconv5 = crop_like(self.deconv5(out_conv6), out_conv5)
-        out_deconv5 = self.deconv5(out_conv6)
-        # print("out_deconv5: "+str(out_deconv5.shape))
-        concat5 = torch.cat((out_deconv5, flow6_up), 1)
+        # out_deconv5 = self.deconv5(out_conv6)
+        # # print("out_deconv5: "+str(out_deconv5.shape))
+        # concat5 = torch.cat((out_deconv5, flow6_up), 1)
 # 1
-        # print("concat5: "+str(concat5.shape))
-        flow5 = self.predict_flow5(concat5)
+        # # print("concat5: "+str(concat5.shape))
+        flow5 = self.predict_flow5(out_convViT)
         # print("flow5: "+str(flow5.shape))
         flow5_up = self.upsampled_flow5_to_4(flow5)
         # print("flow5_up: "+str(flow5_up.shape))
-        out_deconv4 = self.deconv4(concat5)
+        out_deconv4 = self.deconv4(out_convViT)
         # print("out_deconv4: "+str(out_deconv4.shape))
         concat4 = torch.cat((out_deconv4, flow5_up), 1)
 # 2
@@ -172,7 +172,7 @@ class FlowNetC(nn.Module):
         # print("flow2: "+str(flow2.shape))
 
         if self.training:
-            return flow2, flow3, flow4, flow5, flow6
+            return flow2, flow3, flow4, flow5
         else:
             return flow2
 

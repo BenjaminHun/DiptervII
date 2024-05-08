@@ -124,7 +124,7 @@ def main():
     args.evaluate = False
     args.milestones = [100, 150, 200]
     args.start_epoch = 0
-    args.multiscale_weights = [0.005, 0.01, 0.02, 0.08, 0.32]
+    args.multiscale_weights = [ 0.01, 0.02, 0.08, 0.32]
     args.print_freq = 10
     save_path = '{},{},{}epochs{},b{},lr{}'.format(
         args.arch,
