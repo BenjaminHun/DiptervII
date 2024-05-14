@@ -100,7 +100,7 @@ def main():
     args = types.SimpleNamespace()
     args.arch = 'flownetc'
     args.solver = 'adam'
-    args.epochs = 300
+    args.epochs = 35
     args.epoch_size = 1000
     args.batch_size = 10
     args.lr = 0.0001
@@ -124,7 +124,7 @@ def main():
     args.evaluate = False
     args.milestones = [100, 150, 200]
     args.start_epoch = 0
-    args.multiscale_weights = [ 0.01, 0.02, 0.08, 0.32]
+    args.multiscale_weights = [0.005, 0.01, 0.02, 0.08, 0.32]
     args.print_freq = 10
     save_path = '{},{},{}epochs{},b{},lr{}'.format(
         args.arch,
@@ -135,8 +135,9 @@ def main():
         args.lr)
     if not args.no_date:
         timestamp = datetime.datetime.now().strftime("%m-%d-%H.%M")
+        timestamp += " Base"
         save_path = os.path.join(timestamp, save_path)
-    save_path = os.path.join(args.dataset, save_path)
+    save_path = os.path.join("tensorboard_output", save_path)
     print('=> will save everything to {}'.format(save_path))
     if not os.path.exists(save_path):
         os.makedirs(save_path)
@@ -168,15 +169,16 @@ def main():
         co_transform = flow_transforms.Compose([
             flow_transforms.RandomCrop((320, 448)),
             flow_transforms.RandomVerticalFlip(),
-            flow_transforms.RandomHorizontalFlip()
+            flow_transforms.RandomHorizontalFlip(),
         ])
     else:
         co_transform = flow_transforms.Compose([
             flow_transforms.RandomTranslate(10),
             flow_transforms.RandomRotate(10, 5),
-            flow_transforms.RandomCrop((320, 448)),
+            flow_transforms.RandomCrop((336, 448)),
             flow_transforms.RandomVerticalFlip(),
-            flow_transforms.RandomHorizontalFlip()
+            flow_transforms.RandomHorizontalFlip(),
+            flow_transforms.Scale(384)
         ])
 
     print("=> fetching img pairs in '{}'".format(args.data))

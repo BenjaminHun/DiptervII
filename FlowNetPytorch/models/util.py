@@ -15,12 +15,6 @@ except ImportError as e:
 
 
 def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
-    useSkipConnection = False
-    if useSkipConnection:
-        return nn.Sequential(
-            ConvSkipWOBatchnorm(in_planes, out_planes, kernel_size, stride))
-    # Add more layers as needed
-
     if batchNorm:
         return nn.Sequential(
             nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,

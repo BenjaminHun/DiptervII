@@ -26,6 +26,6 @@ def flying_chairs(root, transform=None, target_transform=None,
     train_dataset = ListDataset(
         root, train_list, transform, target_transform, co_transform)
     test_dataset = ListDataset(
-        root, test_list, transform, target_transform, co_transform)
+        root, test_list, transform, target_transform)
 
     return train_dataset, test_dataset

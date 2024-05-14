@@ -46,7 +46,7 @@ def multiscaleEPE(network_output, target_flow, weights=None, sparse=False):
     if type(network_output) not in [tuple, list]:
         network_output = [network_output]
     if weights is None:
-        weights = [ 0.01, 0.02, 0.08, 0.32]  # as in original article
+        weights = [0.005, 0.01, 0.02, 0.08, 0.32]  # as in original article
     assert (len(weights) == len(network_output))
 
     loss = 0
