@@ -135,7 +135,7 @@ def main():
         args.lr)
     if not args.no_date:
         timestamp = datetime.datetime.now().strftime("%m-%d-%H.%M")
-        timestamp += " Base"
+        timestamp += " Alexnet"
         save_path = os.path.join(timestamp, save_path)
     save_path = os.path.join("tensorboard_output", save_path)
     print('=> will save everything to {}'.format(save_path))
