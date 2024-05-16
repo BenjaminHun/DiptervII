@@ -3,7 +3,6 @@ import torch.nn as nn
 from torch.nn.init import kaiming_normal_, constant_
 from .util import conv, predict_flow, deconv, crop_like, correlate
 import torchvision
-
 __all__ = [
     'flownetc', 'flownetc_bn'
 ]
@@ -14,21 +13,23 @@ class FlowNetC(nn.Module):
 
     def __init__(self, batchNorm=True):
         super(FlowNetC, self).__init__()
-        self.layers=[]
-        self.vgg16 = torchvision.models.vgg16(
-            weights=torchvision.models.VGG16_Weights).features
 
-        for param in self.vgg16.parameters():
+        model = torchvision.models.resnet50(
+            weights=torchvision.models.ResNet50_Weights)
+        model.avgpool = nn.Identity()
+        model.fc = nn.Identity()
+        model.maxpool = nn.Identity()
+        self.backboneModel = nn.Sequential(
+            model.conv1, model.layer1, model.layer2, model.layer3)
+
+        for param in self.backboneModel.parameters():
             param.requires_grad = False
-        
-        for m in self.vgg16.modules():
-            self.layers.append(m)
-        self.customModel= nn.Sequential(*self.layers[1:18])
+
         self.batchNorm = batchNorm
-        # self.conv1 = conv(self.batchNorm,   3,   64, kernel_size=7, stride=2)
-        # self.conv2 = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
-        # self.conv3 = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
-        self.conv_redir = conv(self.batchNorm, 256,   32,
+        self.conv1 = conv(self.batchNorm,   3,   64, kernel_size=7, stride=2)
+        self.conv2 = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
+        self.conv3 = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
+        self.conv_redir = conv(self.batchNorm, 1024,   32,
                                kernel_size=1, stride=1)
 
         self.conv3_1 = conv(self.batchNorm, 473,  256)
@@ -48,7 +49,7 @@ class FlowNetC(nn.Module):
         self.predict_flow5 = predict_flow(1026)
         self.predict_flow4 = predict_flow(770)
         self.predict_flow3 = predict_flow(386)
-        self.predict_flow2 = predict_flow(322)
+        self.predict_flow2 = predict_flow(194-128)
 
         self.upsampled_flow6_to_5 = nn.ConvTranspose2d(
             2, 2, 4, 2, 1, bias=False)
@@ -68,25 +69,14 @@ class FlowNetC(nn.Module):
                 constant_(m.weight, 1)
                 constant_(m.bias, 0)
 
-    def print_sizes(self, model, input_tensor):
-        output = input_tensor
-        for m in model.children():
-            output = m(output)
-        return output
-
     def forward(self, x):
         x1 = x[:, :3]
         x2 = x[:, 3:]
 
-        # out_conv1a = self.conv1(x1)
-        # out_conv2a = self.conv2(out_conv1a)
-        # out_conv3a = self.conv3(out_conv2a)
-        out_conv3a = self.customModel(x1)
+        with torch.no_grad():
+            out_conv3a = self.backboneModel(x1)
+            out_conv3b = self.backboneModel(x2)
 
-        # out_conv1b = self.conv1(x2)
-        # out_conv2b = self.conv2(out_conv1b)
-        # out_conv3b = self.conv3(out_conv2b)
-        out_conv3b = self.customModel(x2)
         out_conv_redir = self.conv_redir(out_conv3a)
         out_correlation = correlate(out_conv3a, out_conv3b)
 
@@ -116,7 +106,7 @@ class FlowNetC(nn.Module):
         flow3_up = crop_like(self.upsampled_flow3_to_2(flow3), out_conv3a)
         out_deconv2 = crop_like(self.deconv2(concat3), out_conv3a)
 
-        concat2 = torch.cat((out_conv3a,out_deconv2, flow3_up), 1)
+        concat2 = torch.cat((out_deconv2, flow3_up), 1)
         flow2 = self.predict_flow2(concat2)
 
         if self.training:
