@@ -5,17 +5,17 @@ import torch.nn.functional as F
 
 
 class ResNetBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1, kernelSize=3):
+    def __init__(self, in_channels, out_channels, stride=1, kernel_size=3):
         super(ResNetBlock, self).__init__()
 
         # First convolutional layer
         self.conv1 = nn.Conv2d(
-            in_channels, out_channels, kernel_size=kernelSize, stride=stride, padding=1, bias=False)
+            in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=(kernel_size-1)//2, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
 
         # Second convolutional layer
         self.conv2 = nn.Conv2d(out_channels, out_channels,
-                               kernel_size=kernelSize, stride=1, padding=1, bias=False)
+                               kernel_size=kernel_size, stride=1, padding=(kernel_size-1)//2, bias=False)
         self.bn2 = nn.BatchNorm2d(out_channels)
 
         # Shortcut connection if dimensions change

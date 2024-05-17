@@ -1,10 +1,8 @@
 import torch
 import torch.nn as nn
 from torch.nn.init import kaiming_normal_, constant_
-import math as m
-from swin_transformer_custom import SwinTransformer
 from .util import conv, predict_flow, deconv, crop_like, correlate
-import torchvision
+
 __all__ = [
     'flownetc', 'flownetc_bn'
 ]
@@ -15,22 +13,11 @@ class FlowNetC(nn.Module):
 
     def __init__(self, batchNorm=True):
         super(FlowNetC, self).__init__()
-        model = torchvision.models.swin_t(
-            weights=torchvision.models.Swin_T_Weights).features
-        layers = []
 
-        for m in model.children():
-            layers.append(m)
-
-        self.backboneModel = nn.Sequential(*layers[:2])
-
-        for param in self.backboneModel.parameters():
-            param.requires_grad = False
-        
         self.batchNorm = batchNorm
-        # self.conv1 = conv(self.batchNorm,   3,   64, kernel_size=7, stride=2)
-        # self.conv2 = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
-        self.conv3 = conv(self.batchNorm, 96,  256, kernel_size=5, stride=2)
+        self.conv1 = conv(self.batchNorm,   3,   64, kernel_size=7, stride=2)
+        self.conv2 = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
+        self.conv3 = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
         self.conv_redir = conv(self.batchNorm, 256,   32,
                                kernel_size=1, stride=1)
 
@@ -51,7 +38,7 @@ class FlowNetC(nn.Module):
         self.predict_flow5 = predict_flow(1026)
         self.predict_flow4 = predict_flow(770)
         self.predict_flow3 = predict_flow(386)
-        self.predict_flow2 = predict_flow(162)
+        self.predict_flow2 = predict_flow(194)
 
         self.upsampled_flow6_to_5 = nn.ConvTranspose2d(
             2, 2, 4, 2, 1, bias=False)
@@ -74,13 +61,13 @@ class FlowNetC(nn.Module):
     def forward(self, x):
         x1 = x[:, :3]
         x2 = x[:, 3:]
-        with torch.no_grad():
-            out_conv2a = self.backboneModel(
-                    x1).permute(0, 3, 1, 2).contiguous()
-            out_conv2b = self.backboneModel(
-                    x2).permute(0, 3, 1, 2).contiguous()
 
+        out_conv1a = self.conv1(x1)
+        out_conv2a = self.conv2(out_conv1a)
         out_conv3a = self.conv3(out_conv2a)
+
+        out_conv1b = self.conv1(x2)
+        out_conv2b = self.conv2(out_conv1b)
         out_conv3b = self.conv3(out_conv2b)
 
         out_conv_redir = self.conv_redir(out_conv3a)
