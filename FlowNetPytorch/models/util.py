@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
+from models import ConvSkipWOBatchnorm
 from models.ResNetBlock import ResNetBlock
 
 try:
@@ -14,22 +15,12 @@ except ImportError as e:
 
 
 def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
-    resnet = True
-    if resnet:
-        return ResNetBlock(in_channels=in_planes, out_channels=out_planes, kernel_size=kernel_size, stride=stride)
-    if batchNorm:
+    useSkipConnection = True
+
+    if useSkipConnection:
         return nn.Sequential(
-            nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
-                      stride=stride, padding=(kernel_size-1)//2, bias=False),
-            nn.BatchNorm2d(out_planes),
-            nn.LeakyReLU(0.1, inplace=True)
-        )
-    else:
-        return nn.Sequential(
-            nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
-                      stride=stride, padding=(kernel_size-1)//2, bias=True),
-            nn.LeakyReLU(0.1, inplace=True)
-        )
+            ConvSkipWOBatchnorm.ConvSkipWOBatchnorm(in_planes, out_planes, kernel_size, stride))
+    # Add more layers as needed
 
 
 def predict_flow(in_planes):
