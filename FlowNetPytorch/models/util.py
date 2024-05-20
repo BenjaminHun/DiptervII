@@ -1,8 +1,8 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models import ConvSkipWOBatchnorm
-from models.ResNetBlock import ResNetBlock
+from models.ConvSkipWOBatchnorm import ConvSkipWOBatchnorm
+from models.ConvBlockWithSkipConnection import ConvBlockWithSkipConnection
 
 try:
     from spatial_correlation_sampler import spatial_correlation_sample
@@ -15,13 +15,35 @@ except ImportError as e:
 
 
 def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
-    useSkipConnection = True
+    useSkipConnection = False
 
     if useSkipConnection:
         return nn.Sequential(
-            ConvSkipWOBatchnorm.ConvSkipWOBatchnorm(in_planes, out_planes, kernel_size, stride))
+            ConvSkipWOBatchnorm(in_planes, out_planes, kernel_size, stride))
     # Add more layers as needed
 
+    if batchNorm:
+        return nn.Sequential(
+            nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
+                      stride=stride, padding=(kernel_size-1)//2, bias=False),
+            nn.BatchNorm2d(out_planes),  # TODO
+            nn.LeakyReLU(0.1, inplace=True)
+        )
+    else:
+        return nn.Sequential(
+            nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
+                      stride=stride, padding=(kernel_size-1)//2, bias=True),
+            nn.LeakyReLU(0.1, inplace=True)
+        )
+
+def largeSkipConnectionConv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
+    if in_planes != out_planes or stride != 1:
+        return nn.Sequential(
+            nn.Conv2d(in_planes, out_planes, kernel_size=1,
+                      stride=stride, padding=0, bias=True),
+            nn.LeakyReLU(0.1, inplace=True))
+    else:
+        return nn.Sequential(nn.LeakyReLU(0.1, inplace=True))
 
 def predict_flow(in_planes):
     return nn.Conv2d(in_planes, 2, kernel_size=3, stride=1, padding=1, bias=False)
