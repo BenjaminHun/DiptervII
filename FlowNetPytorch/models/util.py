@@ -36,7 +36,6 @@ def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
             nn.LeakyReLU(0.1, inplace=True)
         )
 
-
 def largeSkipConnectionConv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
     if in_planes != out_planes or stride != 1:
         return nn.Sequential(
@@ -45,7 +44,6 @@ def largeSkipConnectionConv(batchNorm, in_planes, out_planes, kernel_size=3, str
             nn.LeakyReLU(0.1, inplace=True))
     else:
         return nn.Sequential(nn.LeakyReLU(0.1, inplace=True))
-
 
 def predict_flow(in_planes):
     return nn.Conv2d(in_planes, 2, kernel_size=3, stride=1, padding=1, bias=False)
@@ -63,7 +61,7 @@ def correlate(input1, input2):
     out_corr = spatial_correlation_sample(input1,
                                           input2,
                                           kernel_size=1,
-                                          patch_size=11,
+                                          patch_size=21,
                                           stride=1,
                                           padding=0,
                                           dilation_patch=2)
